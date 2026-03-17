@@ -191,17 +191,23 @@ input[type='number'] { -moz-appearance: textfield; }
   z-index: 1;
 }
 
-.step--active .step-dot {
+.step--awaiting .step-dot {
   background: linear-gradient(135deg, #4fd1c5, #38b2ac);
   border-color: var(--accent);
   color: #020308;
   font-weight: 600;
 }
 
-.step--done .step-dot {
+.step--approved .step-dot {
   background: rgba(79, 209, 197, 0.15);
   border-color: rgba(79, 209, 197, 0.6);
   color: var(--accent);
+}
+
+.step--rejected .step-dot {
+  background: rgba(245, 101, 101, 0.12);
+  border-color: rgba(245, 101, 101, 0.5);
+  color: var(--danger);
 }
 
 .step-line {
@@ -215,35 +221,111 @@ input[type='number'] { -moz-appearance: textfield; }
 .step-body {
   padding: 4px 0 18px;
   flex: 1;
+  min-width: 0;
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .step-title {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--muted);
   transition: color 0.2s;
 }
 
-.step--idle .step-title { color: var(--muted); }
-.step--active .step-title { color: var(--accent); }
+.step--awaiting .step-title { color: var(--accent); }
+.step--approved .step-title { color: var(--text); }
+.step--rejected .step-title { color: var(--danger); }
 
-.step-actor {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
-  letter-spacing: 0.06em;
+.step-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
 }
 
-.step-desc {
-  margin-top: 8px;
+.mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.method { color: rgba(79, 209, 197, 0.7); }
+
+.sep { color: rgba(139, 155, 181, 0.4); font-size: 11px; }
+
+/* status badge */
+.status-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.status--pending  { color: var(--muted); border-color: rgba(72, 84, 116, 0.4); }
+.status--awaiting { color: var(--accent); border-color: rgba(79, 209, 197, 0.5); background: rgba(79, 209, 197, 0.07); }
+.status--approved { color: var(--success); border-color: rgba(104, 211, 145, 0.4); background: rgba(104, 211, 145, 0.07); }
+.status--rejected { color: var(--danger); border-color: rgba(245, 101, 101, 0.4); background: rgba(245, 101, 101, 0.07); }
+
+/* tx prompt */
+.tx-prompt {
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(79, 209, 197, 0.25);
+  background: rgba(6, 9, 16, 0.97);
+  overflow: hidden;
+  animation: fadeIn 0.18s ease;
+}
+
+.tx-warning {
+  padding: 9px 14px;
+  font-size: 12px;
+  color: #f6ad55;
+  background: rgba(246, 173, 85, 0.08);
+  border-bottom: 1px solid rgba(246, 173, 85, 0.2);
+}
+
+.tx-details {
+  padding: 4px 0;
+}
+
+.tx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(33, 43, 71, 0.6);
+  gap: 16px;
+}
+
+.tx-row:last-child { border-bottom: none; }
+
+.tx-key {
   font-size: 12px;
   color: var(--muted);
-  line-height: 1.65;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(6, 9, 16, 0.96);
-  border: 1px solid rgba(33, 43, 71, 0.9);
-  animation: fadeIn 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tx-val {
+  font-size: 12px;
+  color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  text-align: right;
+}
+
+.tx-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(33, 43, 71, 0.6);
 }
 
 @keyframes fadeIn {
@@ -254,9 +336,19 @@ input[type='number'] { -moz-appearance: textfield; }
 .success-banner {
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(104, 211, 145, 0.1);
-  border: 1px solid rgba(104, 211, 145, 0.4);
+  background: rgba(104, 211, 145, 0.08);
+  border: 1px solid rgba(104, 211, 145, 0.35);
   color: var(--success);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rejected-banner {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(245, 101, 101, 0.08);
+  border: 1px solid rgba(245, 101, 101, 0.35);
+  color: var(--danger);
   font-size: 13px;
   font-weight: 500;
 }
@@ -270,12 +362,11 @@ input[type='number'] { -moz-appearance: textfield; }
 button {
   border: none;
   border-radius: 10px;
-  padding: 11px 18px;
+  padding: 10px 16px;
   font-size: 13px;
   font-weight: 500;
   font-family: var(--sans);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
   background: linear-gradient(135deg, #4fd1c5, #38b2ac);
   color: #020308;
@@ -290,6 +381,12 @@ button.secondary {
   background: rgba(13, 17, 26, 0.95);
   color: var(--muted);
   border: 1px solid rgba(33, 43, 71, 0.9);
+}
+
+button.reject {
+  background: rgba(245, 101, 101, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(245, 101, 101, 0.35);
 }
 
 /* ── Footer ── */

@@ -2,45 +2,92 @@ import React, { useMemo, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import './style.css'
 
-type Step = { id: number; title: string; description: string; actor: string }
+// ── Types ──────────────────────────────────────────────────────────────────
 
-const STEPS: Step[] = [
+type StepStatus = 'pending' | 'awaiting' | 'approved' | 'rejected'
+
+type TxStep = {
+  id: number
+  title: string
+  contract: string
+  method: string
+  details: Record<string, string>
+  warning?: string
+  approveLabel: string
+}
+
+// ── Static step definitions ────────────────────────────────────────────────
+
+const TX_STEPS: TxStep[] = [
   {
     id: 0,
-    title: 'Broadcast Transaction',
-    actor: 'User → Network',
-    description:
-      'Your signed transaction is broadcast to the peer-to-peer network. Nodes receive and validate the transaction format and signature.',
+    title: 'Connect to contract',
+    contract: '0xA0b8...eB48',
+    method: 'connect(address)',
+    details: {
+      'From': '0xYour...Wallet',
+      'Contract': '0xA0b8...eB48',
+      'Network': 'Ethereum Mainnet',
+      'Gas estimate': '21,000 gas',
+    },
+    approveLabel: 'Connect',
   },
   {
     id: 1,
-    title: 'Mempool Queuing',
-    actor: 'Network → Mempool',
-    description:
-      'Valid transactions enter the mempool (memory pool), where they wait to be picked up by a miner or validator based on gas fee priority.',
+    title: 'Approve token spend',
+    contract: '0xdAC1...1ec7',
+    method: 'approve(spender, amount)',
+    details: {
+      'Token': 'USDC',
+      'Spender': '0xA0b8...eB48',
+      'Amount': '5,000 USDC',
+      'Gas estimate': '46,000 gas · ~$1.20',
+    },
+    warning: 'You are granting this contract permission to spend your tokens.',
+    approveLabel: 'Approve spend',
   },
   {
     id: 2,
-    title: 'Block Inclusion',
-    actor: 'Validator → Block',
-    description:
-      'A validator selects your transaction from the mempool and includes it in a new block candidate. The block is proposed to the network.',
+    title: 'Deposit to pool',
+    contract: '0xA0b8...eB48',
+    method: 'deposit(uint256 amount)',
+    details: {
+      'Amount': '5,000 USDC',
+      'Pool': 'USDC / ETH 0.3%',
+      'Slippage tolerance': '0.5%',
+      'Gas estimate': '112,000 gas · ~$2.80',
+    },
+    approveLabel: 'Confirm deposit',
   },
   {
     id: 3,
-    title: 'Consensus & Finality',
-    actor: 'Network → Chain',
-    description:
-      'Other validators attest to the block. Once enough attestations are collected, the block reaches finality and is appended to the chain.',
+    title: 'Claim LP tokens',
+    contract: '0xA0b8...eB48',
+    method: 'mint(address recipient)',
+    details: {
+      'LP tokens': '4,987.23 UNI-V2',
+      'Recipient': '0xYour...Wallet',
+      'Pool share': '0.0041%',
+      'Gas estimate': '68,000 gas · ~$1.70',
+    },
+    approveLabel: 'Claim tokens',
   },
   {
     id: 4,
-    title: 'State Update',
-    actor: 'Chain → State',
-    description:
-      'The EVM executes your transaction, updating account balances and contract storage. The new state root is committed to the blockchain.',
+    title: 'Stake for yield',
+    contract: '0x1f98...0505',
+    method: 'stake(uint256 lpAmount)',
+    details: {
+      'LP staked': '4,987.23 UNI-V2',
+      'Reward token': 'UNI',
+      'Current APY': '5.00%',
+      'Gas estimate': '89,000 gas · ~$2.20',
+    },
+    approveLabel: 'Stake & earn',
   },
 ]
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
   return isNaN(n)
@@ -48,14 +95,16 @@ function fmt(n: number) {
     : n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 }
 
+// ── App ────────────────────────────────────────────────────────────────────
+
 function App() {
   const [balance, setBalance] = useState('5000')
   const [apy, setApy] = useState('5')
   const [years, setYears] = useState('1')
 
-  const [activeStep, setActiveStep] = useState<number | null>(null)
-  const [running, setRunning] = useState(false)
-  const [done, setDone] = useState(false)
+  // step index that is currently "awaiting" user action; null = not started
+  const [currentStep, setCurrentStep] = useState<number | null>(null)
+  const [statuses, setStatuses] = useState<StepStatus[]>(TX_STEPS.map(() => 'pending'))
 
   const { principal, interest, total } = useMemo(() => {
     const p = parseFloat(balance) || 0
@@ -65,36 +114,51 @@ function App() {
     return { principal: p, interest: i, total: p + i }
   }, [balance, apy, years])
 
-  const runSimulation = async () => {
-    if (running) return
-    setRunning(true)
-    setDone(false)
-    for (let i = 0; i < STEPS.length; i++) {
-      setActiveStep(i)
-      await new Promise(r => setTimeout(r, 1200))
+  const allDone = statuses.every(s => s === 'approved')
+  const anyRejected = statuses.some(s => s === 'rejected')
+
+  const setStatus = (idx: number, status: StepStatus) => {
+    setStatuses(prev => prev.map((s, i) => (i === idx ? status : s)))
+  }
+
+  const startFlow = () => {
+    setStatuses(TX_STEPS.map(() => 'pending'))
+    setCurrentStep(0)
+    setStatus(0, 'awaiting')
+  }
+
+  const approve = (idx: number) => {
+    setStatus(idx, 'approved')
+    const next = idx + 1
+    if (next < TX_STEPS.length) {
+      setCurrentStep(next)
+      setStatus(next, 'awaiting')
+    } else {
+      setCurrentStep(null)
     }
-    setRunning(false)
-    setDone(true)
+  }
+
+  const reject = (idx: number) => {
+    setStatus(idx, 'rejected')
+    setCurrentStep(null)
   }
 
   const reset = () => {
-    setActiveStep(null)
-    setDone(false)
-    setRunning(false)
+    setStatuses(TX_STEPS.map(() => 'pending'))
+    setCurrentStep(null)
   }
 
   return (
     <div className="shell">
       <header>
         <h1>DeFi</h1>
-        <p className="sub">Blockchain transaction simulator</p>
+        <p className="sub">Smart contract transaction flow</p>
       </header>
 
       <main>
-        {/* ── Top: Balance + APY Calculator ── */}
+        {/* ── Balance + APY ── */}
         <section className="card">
           <div className="card-title">Balance &amp; APY Calculator</div>
-
           <div className="field-group">
             <label>
               Starting balance
@@ -107,9 +171,8 @@ function App() {
                 placeholder="0.00"
               />
             </label>
-
             <label>
-              Annual percentage yield (APY)
+              Annual percentage yield
               <select value={apy} onChange={e => setApy(e.target.value)}>
                 <option value="3">3% — conservative</option>
                 <option value="5">5% — stablecoins</option>
@@ -117,7 +180,6 @@ function App() {
                 <option value="15">15% — high risk</option>
               </select>
             </label>
-
             <label>
               Duration
               <select value={years} onChange={e => setYears(e.target.value)}>
@@ -128,7 +190,6 @@ function App() {
               </select>
             </label>
           </div>
-
           <div className="figures">
             <div className="figure">
               <div className="fig-label">Deposited</div>
@@ -145,35 +206,61 @@ function App() {
           </div>
         </section>
 
-        {/* ── Bottom: Transaction Simulator ── */}
+        {/* ── Transaction flow ── */}
         <section className="card">
-          <div className="card-title">Transaction Simulator</div>
-          <p className="hint">Walk through how a transaction moves from your wallet to the blockchain.</p>
+          <div className="card-title">Contract transaction flow</div>
+          <p className="hint">Each step requires your manual approval before the next contract call executes.</p>
 
           <div className="steps">
-            {STEPS.map((step, i) => {
-              const state =
-                activeStep === null
-                  ? 'idle'
-                  : i < activeStep
-                  ? 'done'
-                  : i === activeStep
-                  ? 'active'
-                  : 'idle'
+            {TX_STEPS.map((step, i) => {
+              const status = statuses[i]
+              const isAwaiting = status === 'awaiting'
 
               return (
-                <div key={step.id} className={`step step--${state}`}>
+                <div key={step.id} className={`step step--${status}`}>
                   <div className="step-left">
                     <div className="step-dot">
-                      {state === 'done' ? '✓' : i + 1}
+                      {status === 'approved' ? '✓' : status === 'rejected' ? '✕' : i + 1}
                     </div>
-                    {i < STEPS.length - 1 && <div className="step-line" />}
+                    {i < TX_STEPS.length - 1 && <div className="step-line" />}
                   </div>
+
                   <div className="step-body">
-                    <div className="step-title">{step.title}</div>
-                    <div className="step-actor">{step.actor}</div>
-                    {state === 'active' && (
-                      <div className="step-desc">{step.description}</div>
+                    <div className="step-header">
+                      <div>
+                        <div className="step-title">{step.title}</div>
+                        <div className="step-meta">
+                          <span className="mono">{step.contract}</span>
+                          <span className="sep">·</span>
+                          <span className="mono method">{step.method}</span>
+                        </div>
+                      </div>
+                      <div className={`status-badge status--${status}`}>
+                        {status === 'pending' && 'Pending'}
+                        {status === 'awaiting' && 'Awaiting approval'}
+                        {status === 'approved' && 'Approved'}
+                        {status === 'rejected' && 'Rejected'}
+                      </div>
+                    </div>
+
+                    {isAwaiting && (
+                      <div className="tx-prompt">
+                        {step.warning && (
+                          <div className="tx-warning">{step.warning}</div>
+                        )}
+                        <div className="tx-details">
+                          {Object.entries(step.details).map(([k, v]) => (
+                            <div key={k} className="tx-row">
+                              <span className="tx-key">{k}</span>
+                              <span className="tx-val">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="tx-actions">
+                          <button onClick={() => approve(i)}>{step.approveLabel}</button>
+                          <button className="reject" onClick={() => reject(i)}>Reject</button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -181,25 +268,33 @@ function App() {
             })}
           </div>
 
-          {done && (
+          {allDone && (
             <div className="success-banner">
-              Transaction confirmed on-chain.
+              All contract calls confirmed. Position is live on-chain.
+            </div>
+          )}
+
+          {anyRejected && !allDone && (
+            <div className="rejected-banner">
+              Transaction rejected. Flow stopped.
             </div>
           )}
 
           <div className="sim-actions">
-            <button onClick={runSimulation} disabled={running}>
-              {running ? 'Simulating…' : 'Run simulation'}
-            </button>
-            <button className="secondary" onClick={reset} disabled={running}>
-              Reset
-            </button>
+            {currentStep === null && !allDone && (
+              <button onClick={startFlow}>
+                {anyRejected ? 'Restart flow' : 'Start transaction'}
+              </button>
+            )}
+            {(allDone || anyRejected) && (
+              <button className="secondary" onClick={reset}>Reset</button>
+            )}
           </div>
         </section>
       </main>
 
       <footer>
-        <span>DeFi · educational simulator</span>
+        <span>DeFi · contract simulator</span>
         <span>No wallet required.</span>
       </footer>
     </div>
