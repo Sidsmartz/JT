@@ -95,9 +95,101 @@ function fmt(n: number) {
     : n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 }
 
+// ── Auth screen ────────────────────────────────────────────────────────────
+
+type AuthStage = 'signup' | 'login'
+
+type StoredUser = { email: string; password: string } | null
+
+function AuthScreen({
+  stage,
+  stored,
+  onSignup,
+  onLogin,
+  onSwitch,
+}: {
+  stage: AuthStage
+  stored: StoredUser
+  onSignup: (email: string, password: string) => void
+  onLogin: (email: string, password: string) => void
+  onSwitch: (s: AuthStage) => void
+}) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  const submit = () => {
+    if (!email || !password) { setError('Fill in both fields.'); return }
+    if (stage === 'signup') {
+      onSignup(email, password)
+    } else {
+      if (!stored || email !== stored.email || password !== stored.password) {
+        setError('Credentials do not match.')
+        return
+      }
+      onLogin(email, password)
+    }
+  }
+
+  const switchTo = (s: AuthStage) => {
+    setError('')
+    setEmail('')
+    setPassword('')
+    onSwitch(s)
+  }
+
+  return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-logo">DeFi</div>
+        <div className="auth-title">{stage === 'signup' ? 'Create account' : 'Sign in'}</div>
+
+        <label>
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setError('') }}
+            placeholder="you@example.com"
+            onKeyDown={e => e.key === 'Enter' && submit()}
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setError('') }}
+            placeholder="••••••••"
+            onKeyDown={e => e.key === 'Enter' && submit()}
+          />
+        </label>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <button onClick={submit}>
+          {stage === 'signup' ? 'Sign up' : 'Log in'}
+        </button>
+
+        <div className="auth-toggle">
+          {stage === 'signup' ? (
+            <>Already have an account? <button className="link" onClick={() => switchTo('login')}>Log in</button></>
+          ) : (
+            <>No account yet? <button className="link" onClick={() => switchTo('signup')}>Sign up</button></>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── App ────────────────────────────────────────────────────────────────────
 
 function App() {
+  const [authStage, setAuthStage] = useState<AuthStage>('signup')
+  const [storedUser, setStoredUser] = useState<StoredUser>(null)
+  const [loggedIn, setLoggedIn] = useState(false)
+
   const [balance, setBalance] = useState('5000')
   const [apy, setApy] = useState('5')
   const [years, setYears] = useState('1')
@@ -148,11 +240,29 @@ function App() {
     setCurrentStep(null)
   }
 
+  if (!loggedIn) {
+    return (
+      <AuthScreen
+        stage={authStage}
+        stored={storedUser}
+        onSignup={(email, password) => {
+          setStoredUser({ email, password })
+          setAuthStage('login')
+        }}
+        onLogin={() => setLoggedIn(true)}
+        onSwitch={setAuthStage}
+      />
+    )
+  }
+
   return (
     <div className="shell">
       <header>
-        <h1>DeFi</h1>
-        <p className="sub">Smart contract transaction flow</p>
+        <div>
+          <h1>DeFi</h1>
+          <p className="sub">Smart contract transaction flow</p>
+        </div>
+        <button className="secondary sign-out" onClick={() => setLoggedIn(false)}>Sign out</button>
       </header>
 
       <main>
