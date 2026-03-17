@@ -292,11 +292,6 @@ function App() {
           </div>
         </section>
       </main>
-
-      <footer>
-        <span>DeFi · contract simulator</span>
-        <span>No wallet required.</span>
-      </footer>
     </div>
   )
 }
