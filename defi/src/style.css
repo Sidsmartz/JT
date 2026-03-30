@@ -500,3 +500,49 @@ button.sign-out { padding: 7px 14px; font-size: 12px; }
   .auth-wrap { align-items: flex-start; padding-top: 40px; }
   h1 { font-size: 18px; }
 }
+
+/* ── Wallet bar ── */
+.wallet-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: radial-gradient(circle at top left, #151827, #05070d 70%);
+  border: 1px solid var(--border);
+}
+
+.wallet-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.muted-text {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.network-badge {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 209, 197, 0.4);
+  color: var(--accent);
+  background: rgba(79, 209, 197, 0.07);
+}
+
+/* ── Tx explorer link ── */
+.tx-link {
+  font-size: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.tx-link:hover { text-decoration: underline; }
