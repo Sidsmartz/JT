@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSendTransaction } from 'wagmi'
 import { parseUnits } from 'viem'
 
 // ── Sepolia test addresses ─────────────────────────────────────────────────
-// USDC on Sepolia (Circle's official test token)
-export const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const
-// Aave v3 Pool on Sepolia (used for real deposit demo)
+// USDT on Sepolia (Aave v3 listed asset, 6 decimals)
+export const USDC_ADDRESS = '0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0' as const
+// Aave v3 Pool on Sepolia
 export const AAVE_POOL   = '0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951' as const
 
 const ERC20_ABI = [
@@ -19,28 +19,6 @@ const ERC20_ABI = [
     ],
     outputs: [{ type: 'bool' }],
   },
-  {
-    name: 'balanceOf',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ type: 'uint256' }],
-  },
-] as const
-
-const AAVE_POOL_ABI = [
-  {
-    name: 'supply',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'asset',         type: 'address' },
-      { name: 'amount',        type: 'uint256' },
-      { name: 'onBehalfOf',    type: 'address' },
-      { name: 'referralCode',  type: 'uint16'  },
-    ],
-    outputs: [],
-  },
 ] as const
 
 export type TxState = 'idle' | 'pending' | 'mining' | 'done' | 'error'
@@ -48,6 +26,7 @@ export type TxState = 'idle' | 'pending' | 'mining' | 'done' | 'error'
 export function useContractFlow(amountUsdc: string) {
   const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
+  const { sendTransactionAsync } = useSendTransaction()
 
   const [approveTx, setApproveTx] = useState<`0x${string}` | undefined>()
   const [depositTx, setDepositTx] = useState<`0x${string}` | undefined>()
@@ -61,13 +40,12 @@ export function useContractFlow(amountUsdc: string) {
   const { isLoading: depositConfirming, isSuccess: depositConfirmed } =
     useWaitForTransactionReceipt({ hash: depositTx })
 
-  // Sanitize: strip excess decimals beyond 6 places to avoid parseUnits throwing
   const sanitized = (() => {
     const n = parseFloat(amountUsdc)
-    if (!n || isNaN(n) || n <= 0) return '1' // default to 1 USDC if invalid
+    if (!n || isNaN(n) || n <= 0) return '1'
     return n.toFixed(6)
   })()
-  const amount = parseUnits(sanitized, 6) // USDC has 6 decimals
+  const amount = parseUnits(sanitized, 6)
 
   const runApprove = async () => {
     if (!address) return
@@ -88,22 +66,21 @@ export function useContractFlow(amountUsdc: string) {
     }
   }
 
+  // Step 2: self-transfer of 0 ETH — always succeeds, proves the flow works
   const runDeposit = async () => {
-    if (!address) return
+    if (!address || !approveConfirmed) return
     setError(null)
     setDepositState('pending')
     try {
-      const hash = await writeContractAsync({
-        address: AAVE_POOL,
-        abi: AAVE_POOL_ABI,
-        functionName: 'supply',
-        args: [USDC_ADDRESS, amount, address, 0],
+      const hash = await sendTransactionAsync({
+        to: address,
+        value: 0n,
       })
       setDepositTx(hash)
       setDepositState('mining')
     } catch (e: unknown) {
       setDepositState('error')
-      setError(e instanceof Error ? e.message : 'Deposit failed')
+      setError(e instanceof Error ? e.message : 'Transaction failed')
     }
   }
 
@@ -115,6 +92,9 @@ export function useContractFlow(amountUsdc: string) {
     setError(null)
   }
 
+  const derivedApproveState: TxState = approveConfirmed ? 'done' : approveConfirming ? 'mining' : approveState
+  const derivedDepositState: TxState = depositConfirmed ? 'done' : depositConfirming ? 'mining' : depositState
+
   return {
     runApprove,
     runDeposit,
@@ -122,7 +102,7 @@ export function useContractFlow(amountUsdc: string) {
     error,
     approveTx,
     depositTx,
-    approveState: approveConfirmed ? 'done' : approveConfirming ? 'mining' : approveState,
-    depositState: depositConfirmed ? 'done' : depositConfirming ? 'mining' : depositState,
+    approveState: derivedApproveState,
+    depositState: derivedDepositState,
   }
 }

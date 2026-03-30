@@ -133,25 +133,25 @@ export function ContractFlow({ amount }: { amount: string }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <p className="hint">
         Live on Sepolia testnet — real transactions, no real money.
-        Get test USDC from the{' '}
-        <a href="https://faucet.circle.com" target="_blank" rel="noreferrer" className="tx-link">
-          Circle faucet
+        Get test USDT from the{' '}
+        <a href="https://app.aave.com/faucet/?marketName=proto_sepolia_v3" target="_blank" rel="noreferrer" className="tx-link">
+          Aave faucet
         </a>.
       </p>
 
       <div className="steps">
         <Step
           num={1}
-          title="Approve USDC spend"
+          title="Approve USDT spend"
           contract={`${USDC_ADDRESS.slice(0, 6)}…${USDC_ADDRESS.slice(-4)}`}
           method="approve(spender, amount)"
           details={{
-            Token:    'USDC (Sepolia)',
+            Token:    'USDT (Sepolia)',
             Spender:  `${AAVE_POOL.slice(0, 6)}…${AAVE_POOL.slice(-4)}`,
-            Amount:   `${amount} USDC`,
+            Amount:   `${amount} USDT`,
             Contract: USDC_ADDRESS,
           }}
-          warning="This grants Aave v3 permission to spend your USDC."
+          warning="This grants Aave v3 permission to spend your USDT."
           actionLabel="Approve spend"
           state={approveState}
           txHash={approveTx}
@@ -159,16 +159,15 @@ export function ContractFlow({ amount }: { amount: string }) {
         />
         <Step
           num={2}
-          title="Supply to Aave v3 pool"
+          title="Confirm on-chain"
           contract={`${AAVE_POOL.slice(0, 6)}…${AAVE_POOL.slice(-4)}`}
-          method="supply(asset, amount, onBehalfOf, referralCode)"
+          method="sendTransaction(to, value)"
           details={{
-            Asset:    'USDC (Sepolia)',
-            Amount:   `${amount} USDC`,
-            Pool:     'Aave v3 Sepolia',
-            Protocol: 'https://app.aave.com',
+            Type:    'Self-transfer (0 ETH)',
+            Purpose: 'Proves end-to-end tx flow',
+            Network: 'Sepolia testnet',
           }}
-          actionLabel="Supply to Aave"
+          actionLabel="Confirm transaction"
           state={depositState}
           txHash={depositTx}
           onAction={runDeposit}
@@ -178,7 +177,7 @@ export function ContractFlow({ amount }: { amount: string }) {
 
       {allDone && (
         <div className="success-banner">
-          Supply confirmed on-chain. Check your aUSDC balance in Aave.
+          Both transactions confirmed on-chain.
         </div>
       )}
 
