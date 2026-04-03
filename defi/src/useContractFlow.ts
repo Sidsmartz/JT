@@ -23,7 +23,7 @@ const ERC20_ABI = [
 
 export type TxState = 'idle' | 'pending' | 'mining' | 'done' | 'error'
 
-export function useContractFlow(amountUsdc: string) {
+export function useContractFlow(amountUsdc: string, recipient?: `0x${string}`) {
   const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
   const { sendTransactionAsync } = useSendTransaction()
@@ -66,14 +66,14 @@ export function useContractFlow(amountUsdc: string) {
     }
   }
 
-  // Step 2: self-transfer of 0 ETH — always succeeds, proves the flow works
+  // Step 2: send 0 ETH to recipient (defaults to self)
   const runDeposit = async () => {
     if (!address || !approveConfirmed) return
     setError(null)
     setDepositState('pending')
     try {
       const hash = await sendTransactionAsync({
-        to: address,
+        to: recipient ?? address,
         value: 0n,
       })
       setDepositTx(hash)
