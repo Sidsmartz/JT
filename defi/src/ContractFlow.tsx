@@ -127,7 +127,11 @@ export function ContractFlow({ amount }: { amount: string }) {
     runApprove, runDeposit, reset,
     error, approveTx, depositTx,
     approveState, depositState,
+    ethValue, usdtAmount,
   } = useContractFlow(amount, effectiveRecipient)
+
+  const ethDisplay = (Number(ethValue) / 1e18).toFixed(4)
+  const usdtDisplay = (Number(usdtAmount) / 1e6).toLocaleString('en-US')
 
   const wrongNetwork = isConnected && chain?.id !== sepolia.id
   const allDone = approveState === 'done' && depositState === 'done'
@@ -158,7 +162,7 @@ export function ContractFlow({ amount }: { amount: string }) {
           details={{
             Token:    'USDT (Sepolia)',
             Spender:  `${AAVE_POOL.slice(0, 6)}…${AAVE_POOL.slice(-4)}`,
-            Amount:   `${amount} USDT`,
+            Amount:   `${usdtDisplay} USDT`,
             Contract: USDC_ADDRESS,
           }}
           warning="This grants Aave v3 permission to spend your USDT."
@@ -169,12 +173,12 @@ export function ContractFlow({ amount }: { amount: string }) {
         />
         <Step
           num={2}
-          title="Send 0 ETH"
+          title="Send ETH"
           contract={effectiveRecipient ? `${effectiveRecipient.slice(0, 6)}…${effectiveRecipient.slice(-4)}` : '—'}
-          method="sendTransaction(to, value: 0)"
+          method="sendTransaction(to, value)"
           details={{
-            To:      effectiveRecipient ?? '—',
-            Value:   '0 ETH',
+            To:      effectiveRecipient ? `${effectiveRecipient.slice(0, 6)}…${effectiveRecipient.slice(-4)}` : '—',
+            Value:   `${(parseFloat(amount) / 2000).toFixed(4)} ETH (~$${amount})`,
             Network: 'Sepolia testnet',
           }}
           actionLabel="Send transaction"

@@ -11,11 +11,6 @@ const queryClient = new QueryClient()
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function fmt(n: number) {
-  return isNaN(n)
-    ? '—'
-    : n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
-}
 
 // ── Auth screen ────────────────────────────────────────────────────────────
 
@@ -84,7 +79,7 @@ function App() {
   const [storedUser, setStoredUser] = useState<StoredUser>(null)
   const [loggedIn, setLoggedIn] = useState(false)
 
-  const [balance, setBalance] = useState('5000')
+  const [balance, setBalance] = useState('10')
   const [apy, setApy] = useState('5')
   const [years, setYears] = useState('1')
 
@@ -127,8 +122,8 @@ function App() {
           <div className="card-title">Balance &amp; APY Calculator</div>
           <div className="field-group">
             <label>
-              Starting balance
-              <input type="number" min={0} step={100} value={balance}
+              Starting balance (ETH)
+              <input type="number" min={0} step={1} value={balance}
                 onChange={e => setBalance(e.target.value)} placeholder="0.00" />
             </label>
             <label>
@@ -153,15 +148,15 @@ function App() {
           <div className="figures">
             <div className="figure">
               <div className="fig-label">Deposited</div>
-              <div className="fig-value">{fmt(principal)}</div>
+              <div className="fig-value">{principal.toFixed(4)} ETH</div>
             </div>
             <div className="figure">
               <div className="fig-label">Interest earned</div>
-              <div className="fig-value accent">{fmt(interest)}</div>
+              <div className="fig-value accent">{interest.toFixed(4)} ETH</div>
             </div>
             <div className="figure">
               <div className="fig-label">Total after lock</div>
-              <div className="fig-value">{fmt(total)}</div>
+              <div className="fig-value">{total.toFixed(4)} ETH</div>
             </div>
           </div>
         </section>

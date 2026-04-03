@@ -23,7 +23,7 @@ const ERC20_ABI = [
 
 export type TxState = 'idle' | 'pending' | 'mining' | 'done' | 'error'
 
-export function useContractFlow(amountUsdc: string, recipient?: `0x${string}`) {
+export function useContractFlow(amountEth: string, recipient?: `0x${string}`) {
   const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
   const { sendTransactionAsync } = useSendTransaction()
@@ -40,12 +40,22 @@ export function useContractFlow(amountUsdc: string, recipient?: `0x${string}`) {
   const { isLoading: depositConfirming, isSuccess: depositConfirmed } =
     useWaitForTransactionReceipt({ hash: depositTx })
 
-  const sanitized = (() => {
-    const n = parseFloat(amountUsdc)
-    if (!n || isNaN(n) || n <= 0) return '1'
-    return n.toFixed(6)
+  // Parse ETH amount for the send tx (18 decimals)
+  const ethValue = (() => {
+    try {
+      const n = parseFloat(amountEth)
+      if (!n || isNaN(n) || n <= 0) return parseUnits('0.001', 18)
+      return parseUnits(n.toFixed(18), 18)
+    } catch {
+      return parseUnits('0.001', 18)
+    }
   })()
-  const amount = parseUnits(sanitized, 6)
+
+  // USDT approve amount — use ETH value * 2000 as a USD equivalent for display
+  const usdtAmount = parseUnits(
+    Math.max(1, parseFloat(amountEth) * 2000 || 1).toFixed(6),
+    6
+  )
 
   const runApprove = async () => {
     if (!address) return
@@ -56,7 +66,7 @@ export function useContractFlow(amountUsdc: string, recipient?: `0x${string}`) {
         address: USDC_ADDRESS,
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [AAVE_POOL, amount],
+        args: [AAVE_POOL, usdtAmount],
       })
       setApproveTx(hash)
       setApproveState('mining')
@@ -66,7 +76,7 @@ export function useContractFlow(amountUsdc: string, recipient?: `0x${string}`) {
     }
   }
 
-  // Step 2: send 0 ETH to recipient (defaults to self)
+  // Step 2: send ETH to recipient — value shows in wallet popup
   const runDeposit = async () => {
     if (!address || !approveConfirmed) return
     setError(null)
@@ -102,6 +112,8 @@ export function useContractFlow(amountUsdc: string, recipient?: `0x${string}`) {
     error,
     approveTx,
     depositTx,
+    ethValue,
+    usdtAmount,
     approveState: derivedApproveState,
     depositState: derivedDepositState,
   }
