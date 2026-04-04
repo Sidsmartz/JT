@@ -127,10 +127,10 @@ export function ContractFlow({ amount }: { amount: string }) {
     runApprove, runDeposit, reset,
     error, approveTx, depositTx,
     approveState, depositState,
-    ethValue, usdtAmount,
+    usdtAmount,
   } = useContractFlow(amount, effectiveRecipient)
 
-  const ethDisplay = (Number(ethValue) / 1e18).toFixed(4)
+  const ethDisplay = parseFloat(amount).toFixed(4)
   const usdtDisplay = (Number(usdtAmount) / 1e6).toLocaleString('en-US')
 
   const wrongNetwork = isConnected && chain?.id !== sepolia.id
@@ -178,7 +178,7 @@ export function ContractFlow({ amount }: { amount: string }) {
           method="sendTransaction(to, value)"
           details={{
             To:      effectiveRecipient ? `${effectiveRecipient.slice(0, 6)}…${effectiveRecipient.slice(-4)}` : '—',
-            Value:   `${(parseFloat(amount) / 2000).toFixed(4)} ETH (~$${amount})`,
+            Value:   `${ethDisplay} ETH`,
             Network: 'Sepolia testnet',
           }}
           actionLabel="Send transaction"
